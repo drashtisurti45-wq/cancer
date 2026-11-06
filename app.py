@@ -1,55 +1,61 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 
-st.set_page_config(page_title="Breast Cancer App", layout="wide")
+st.set_page_config(page_title="Breast Cancer Prediction")
 
-st.title("🩺 Breast Cancer Dataset App")
+st.title("🩺 Breast Cancer Prediction App")
 
-uploaded_file = st.file_uploader(
-    "Upload breast-cancer-wisconsin-data.csv",
-    type=["csv"]
+# Load dataset
+df = pd.read_csv("breast-cancer-wisconsin-data.csv")
+
+# Remove unnecessary columns if present
+if "id" in df.columns:
+    df = df.drop("id", axis=1)
+
+if "Unnamed: 32" in df.columns:
+    df = df.drop("Unnamed: 32", axis=1)
+
+# Convert diagnosis to numeric
+df["diagnosis"] = df["diagnosis"].map({"M": 1, "B": 0})
+
+# Features and target
+X = df.drop("diagnosis", axis=1)
+y = df["diagnosis"]
+
+# Train model
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
 )
 
-if uploaded_file is not None:
+model = RandomForestClassifier(random_state=42)
+model.fit(X_train, y_train)
 
-    df = pd.read_csv(uploaded_file)
+st.header("Enter Tumor Details")
 
-    st.success("Dataset Loaded Successfully ✅")
+user_input = {}
 
-    st.subheader("Dataset Preview")
-    st.dataframe(df.head())
+for col in X.columns:
+    user_input[col] = st.number_input(
+        col,
+        value=float(X[col].mean())
+    )
 
-    st.subheader("Dataset Shape")
-    st.write("Rows:", df.shape[0])
-    st.write("Columns:", df.shape[1])
+input_df = pd.DataFrame([user_input])
 
-    st.subheader("Column Names")
-    st.write(df.columns.tolist())
+if st.button("Predict"):
 
-    if 'diagnosis' in df.columns:
+    prediction = model.predict(input_df)[0]
+    probability = model.predict_proba(input_df)[0]
 
-        malignant = len(df[df['diagnosis'] == 'M'])
-        benign = len(df[df['diagnosis'] == 'B'])
+    st.subheader("Prediction Result")
 
-        st.subheader("Diagnosis Summary")
+    if prediction == 1:
+        st.error("🔴 Malignant (Cancer Detected)")
+    else:
+        st.success("🟢 Benign (No Cancer Detected)")
 
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.metric("Malignant", malignant)
-
-        with col2:
-            st.metric("Benign", benign)
-
-        chart_data = pd.DataFrame(
-            {
-                "Count": [malignant, benign]
-            },
-            index=["Malignant", "Benign"]
-        )
-
-        st.bar_chart(chart_data)
-
-else:
-    st.info("Please upload the CSV file.")
+    st.write(
+        f"Confidence Score: {max(probability)*100:.2f}%"
+    )
