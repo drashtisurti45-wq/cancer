@@ -1,50 +1,55 @@
 import streamlit as st
 import pandas as pd
-from sklearn.datasets import load_breast_cancer
-from sklearn.ensemble import RandomForestClassifier
+import numpy as np
 
-# Page Title
-st.title("🩺 Breast Cancer Prediction App")
+st.set_page_config(page_title="Breast Cancer App", layout="wide")
 
-# Load dataset
-data = load_breast_cancer()
+st.title("🩺 Breast Cancer Dataset App")
 
-# Train model
-X = pd.DataFrame(data.data, columns=data.feature_names)
-y = data.target
+uploaded_file = st.file_uploader(
+    "Upload breast-cancer-wisconsin-data.csv",
+    type=["csv"]
+)
 
-model = RandomForestClassifier(random_state=42)
-model.fit(X, y)
+if uploaded_file is not None:
 
-st.header("Enter Patient Details")
+    df = pd.read_csv(uploaded_file)
 
-# User Inputs
-radius_mean = st.number_input("Radius Mean", value=14.0)
-texture_mean = st.number_input("Texture Mean", value=19.0)
-perimeter_mean = st.number_input("Perimeter Mean", value=90.0)
-area_mean = st.number_input("Area Mean", value=650.0)
-smoothness_mean = st.number_input("Smoothness Mean", value=0.10)
+    st.success("Dataset Loaded Successfully ✅")
 
-# Create input row
-input_data = X.mean().to_frame().T
+    st.subheader("Dataset Preview")
+    st.dataframe(df.head())
 
-input_data["mean radius"] = radius_mean
-input_data["mean texture"] = texture_mean
-input_data["mean perimeter"] = perimeter_mean
-input_data["mean area"] = area_mean
-input_data["mean smoothness"] = smoothness_mean
+    st.subheader("Dataset Shape")
+    st.write("Rows:", df.shape[0])
+    st.write("Columns:", df.shape[1])
 
-# Prediction
-if st.button("Predict"):
+    st.subheader("Column Names")
+    st.write(df.columns.tolist())
 
-    prediction = model.predict(input_data)[0]
-    probability = model.predict_proba(input_data)[0]
+    if 'diagnosis' in df.columns:
 
-    st.subheader("Result")
+        malignant = len(df[df['diagnosis'] == 'M'])
+        benign = len(df[df['diagnosis'] == 'B'])
 
-    if prediction == 0:
-        st.error("🔴 Malignant (Cancer Detected)")
-    else:
-        st.success("🟢 Benign (No Cancer Detected)")
+        st.subheader("Diagnosis Summary")
 
-    st.write(f"Confidence: {max(probability)*100:.2f}%")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric("Malignant", malignant)
+
+        with col2:
+            st.metric("Benign", benign)
+
+        chart_data = pd.DataFrame(
+            {
+                "Count": [malignant, benign]
+            },
+            index=["Malignant", "Benign"]
+        )
+
+        st.bar_chart(chart_data)
+
+else:
+    st.info("Please upload the CSV file.")
